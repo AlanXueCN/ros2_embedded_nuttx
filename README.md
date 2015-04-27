@@ -2,6 +2,91 @@
 ROS 2.0 NuttX prototype
 -------------
 
+
+###Quick start:
+Install the following requirements:
+
+```bash
+sudo apt-get install libssl-dev libxml2-dev pkg-config picocom screen libusb-1.0-0-dev gcc-arm-none-eabi
+```
+
+Pull ros2_embedded_nuttx from repository. You may want to go to a specific branch, so do this after cloning.
+```bash
+git clone https://github.com/bosch-ros-pkg/ros2_embedded_nuttx
+cd ros2_embedded_nuttx
+rmdir stlink
+git clone https://github.com/ros2/stlink
+cd stlink
+./autogen.sh
+./configure
+make
+cd ..
+rmdir tinq-core
+git clone https://github.com/ros2/tinq-core.git
+```
+Install openocd
+```bash
+cd tools
+make openocd
+cd ..
+```
+
+Build a program: Before compiling the program, it has to be configured. The example below configures the program with the talker example. You may also want to test listener instead of talker.
+```bash
+cd nuttx/tools
+./configure.sh stm3240g-eval/talker
+cd ..
+```
+
+Compile the program: Make sure you are in the nuttx directory and then compile.
+```bash
+make 
+```
+
+Flash the program into the board:
+```bash
+make program
+```
+The output should look like:
+```bash
+make program
+../tools/openocd/bin/openocd -f board/stm32f4discovery.cfg -c "init" -c "reset halt" -c "flash write_image erase nuttx.bin 0x08000000 bin" -c "verify_image nuttx.bin 0x8000000; reset run; exit"
+Open On-Chip Debugger 0.9.0-dev-00112-g1fa24eb (2014-08-19-11:23)
+Licensed under GNU GPL v2
+For bug reports, read
+    http://openocd.sourceforge.net/doc/doxygen/bugs.html
+Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+adapter speed: 1000 kHz
+adapter_nsrst_delay: 100
+srst_only separate srst_nogate srst_open_drain connect_deassert_srst
+Info : clock speed 1000 kHz
+Info : STLINK v2 JTAG v17 API v2 SWIM v0 VID 0x0483 PID 0x3748
+Info : using stlink api v2
+Info : Target voltage: 3.242300
+Info : stm32f4x.cpu: hardware has 6 breakpoints, 4 watchpoints
+target state: halted
+target halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x080004b0 msp: 0x2000ce18
+auto erase enabled
+Info : device id = 0x10016413
+Info : flash size = 1024kbytes
+target state: halted
+target halted due to breakpoint, current mode: Thread 
+xPSR: 0x61000000 pc: 0x20000042 msp: 0x2000ce18
+wrote 655360 bytes from file nuttx.bin in 23.653700s (27.057 KiB/s)
+target state: halted
+target halted due to breakpoint, current mode: Thread 
+xPSR: 0x61000000 pc: 0x2000002e msp: 0x2000ce18
+verified 646286 bytes in 5.552209s (113.673 KiB/s)
+make: [program] Error 1 (ignored)
+```
+
+You can ignore the last error. After receiving this output, reset the board and connect it to the PC via Ethernet. Make sure that a manual IP address on PC is set with address 192.168.0.2 and bitmask 255.255.255.0.
+
+Go to tinq-core-linux directory. And browse into apps/listener. Write 'make' on the console for compiling the program. Then run the chat0 application. Then, a listener should be created. This app will listen to what talker on the STM32 board publishes. 
+
+###Contents
+
 This repository prototypes ROS 2.0 for embedded systems using NuttX, Tinq and the STM32F4 IC.
 
 - [Milestones](#milestones)
@@ -395,6 +480,46 @@ Following commands are available:
     exit                  Close remote connection.
 
 ```
+
+### How to Create a NuttX App
+Browse to config directory of your device and copy dds. Then paste it as your app's name. Device name could be e.g. stm3240g-eval.
+```c
+cd nuttx/configs/$DEVICE_NAME/
+mkdir your_app_name
+cp -a dds/* your_app_name
+```
+
+Browse into the newly created directory and open defconfig. 
+
+Uncomment CONFIG_EXAMPLES_DDS_CHAT and add CONFIG_EXAMPLES_YOUR_APP_NAME=y into the config file.
+
+Also set CONFIG_USER_ENTRYPOINT="your_app_main" where you should replace your_app_main with your app's main function.
+```c
+cd your_app_name
+nano defconfig
+```
+
+Browse into the examples folder and copy hello. Then paste it as your app's name.
+```c
+cd ../../../apps/examples
+mkdir your_app_name
+cp -a hello/* your_app_name
+```
+
+Open Make.defs in the examples directory.
+```c
+nano Make.defs
+```
+
+Add the following three lines.
+
+```c
+ifeq ($(CONFIG_EXAMPLES_YOUR_APP_NAME),y)
+CONFIGURED_APPS += examples/your_app_name
+endif
+```
+
+Then browse into your app's directory and replace hello_main with the entry point you have specified in a previous step. (in order to avoid undefined reference errors)
 
 ### ROS Client Library
 The [ROS Client Library](rcl/README.md) (rcl) for embedded (implemented under the `rcl` directory) allows to code ROS applications using the ROS 2 API. Refer to [rcl.h](rcl/rcl.h) for a list of functions.
