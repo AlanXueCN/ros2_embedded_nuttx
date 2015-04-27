@@ -369,11 +369,3 @@ endif
 ifeq ($(CONFIG_EXAMPLES_ROSIMUSUBSCRIBER),y)
 CONFIGURED_APPS += examples/rosimu_subscriber
 endif
-
-ifeq ($(CONFIG_EXAMPLES_TALKER),y)
-CONFIGURED_APPS += examples/talker
-endif
-
-ifeq ($(CONFIG_EXAMPLES_LISTENER),y)
-CONFIGURED_APPS += examples/listener
-endif
